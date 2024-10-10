@@ -12,6 +12,17 @@ import { createFor, removeFor, clearFor } from './helpers/Polygon';
 import { CREATE, EDIT, DELETE, APPEND, EDIT_APPEND, NONE, ALL, modeFor } from './helpers/Flags';
 import simplifyPolygon from './helpers/Simplify';
 
+// Fix for Leaflet Marker animated zoom issue
+if (L.Marker) {
+    L.Marker.prototype._animateZoom = function (opt) {
+        if (!this._map) {
+            return fapse;
+        }
+        var pos = this._map._latLngToNewLayerPoint(this._latlng, opt.zoom, opt.center).round();
+        this._setPos(pos);
+    };
+}
+
 // Preventing binding to the `window`.
 noConflict();
 
@@ -35,7 +46,8 @@ export const defaultOptions = {
     maximumPolygons: Infinity,
     notifyAfterEditExit: false,
     leaveModeAfterCreate: false,
-    strokeWidth: 2
+    strokeWidth: 2,
+    strokeColor: 'black'
 };
 
 /**
@@ -233,7 +245,7 @@ export default class FreeDraw extends FeatureGroup {
 
             // Create the line iterator and move it to its first `yield` point, passing in the start point
             // from the mouse down event.
-            const lineIterator = this.createPath(svg, map.latLngToContainerPoint(event.latlng), options.strokeWidth);
+            const lineIterator = this.createPath(svg, map.latLngToContainerPoint(event.latlng), options.strokeWidth, options.strokeColor);
 
             /**
              * @method mouseMove
@@ -308,9 +320,10 @@ export default class FreeDraw extends FeatureGroup {
      * @param {Object} svg
      * @param {Point} fromPoint
      * @param {Number} strokeWidth
+     * @param {String} strokeColor
      * @return {void}
      */
-    createPath(svg, fromPoint, strokeWidth) {
+    createPath(svg, fromPoint, strokeWidth, strokeColor) {
         let lastPoint = fromPoint;
 
         const lineFunction = line().curve(curveMonotoneX).x(d => d.x).y(d => d.y);
@@ -321,7 +334,7 @@ export default class FreeDraw extends FeatureGroup {
             // Draw SVG line based on the last movement of the mouse's position.
             svg.append('path').classed('leaflet-line', true)
                 .attr('d', lineFunction(lineData)).attr('fill', 'none')
-                .attr('stroke', 'black').attr('stroke-width', strokeWidth);
+                .attr('stroke', strokeColor).attr('stroke-width', strokeWidth);
         };
     }
 
